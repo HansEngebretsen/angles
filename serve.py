@@ -7,7 +7,7 @@
 #   POST /export            start rendering a shot with motion.mjs in the background (with "rec": trim + crossfade the recording first)
 #   GET  /export-status?name=x   where that render is: preparing, rendering (done/total frames), encoding, done (mp4) or failed
 #   GET  /activity?rec=x    where things change in each frame of a recording (cursor, typing, a lens), smoothed: [[u, v, energy], ...]
-import json, re, shutil, subprocess, sys, threading, time
+import json, os, re, shutil, subprocess, sys, threading, time
 from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
 from pathlib import Path
 from urllib.parse import urlparse, parse_qs
@@ -18,6 +18,7 @@ ROOT = Path(__file__).parent
 LOG = ROOT / 'feedback.jsonl'
 REC = ROOT / 'rec'
 FPS = 30
+PORT = 8790  # set from argv at startup; renders talk back to this server
 
 def ff(*args): subprocess.run(['ffmpeg', '-y', '-loglevel', 'error', *map(str, args)], check=True)
 
@@ -117,7 +118,7 @@ def run_export(job):
             job['seqDir'] = str(seq.relative_to(ROOT))
         path = loops / f"{job['name']}.json"; path.write_text(json.dumps(job))
         st['state'] = 'rendering'
-        p = subprocess.Popen(['node', 'motion.mjs', str(path)], cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        p = subprocess.Popen(['node', 'motion.mjs', str(path)], cwd=ROOT, env={**os.environ, 'ANGLES_PORT': str(PORT)}, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
         for line in p.stdout:
             if line.startswith('progress '): _, a, b = line.split(); st.update(done=int(a), total=int(b))
             elif line.startswith('encoding'): st['state'] = 'encoding'
@@ -204,4 +205,5 @@ class H(SimpleHTTPRequestHandler):
 if __name__ == '__main__':
     if sys.argv[1:2] == ['ingest']:  # python3 serve.py ingest rec/<dir>: give an existing frame folder a proxy + meta
         print(ingest(ROOT / sys.argv[2])); sys.exit()
-    ThreadingHTTPServer(('', int(sys.argv[1]) if len(sys.argv) > 1 else 8790), H).serve_forever()
+    PORT = int(sys.argv[1]) if len(sys.argv) > 1 else 8790
+    ThreadingHTTPServer(('', PORT), H).serve_forever()

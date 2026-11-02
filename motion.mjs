@@ -19,7 +19,7 @@ const frameSrc = i => M ? `${seqDir}/${String(srcIdx(i)).padStart(4, '0')}.${ext
 const dir = `out/loops/${job.name}/frames`; fs.rmSync(dir, { recursive: true, force: true }); fs.mkdirSync(dir, { recursive: true });
 const b = await puppeteer.launch({ headless: 'new', executablePath: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', args: ['--use-angle=metal'] });
 const p = await b.newPage();
-await p.goto(`http://localhost:8790/?img=${job.img}&aspect=${encodeURIComponent(job.aspect || "16:9")}`, { waitUntil: 'networkidle0' });
+await p.goto(`http://localhost:${process.env.ANGLES_PORT || 8790}/?img=${job.img}&aspect=${encodeURIComponent(job.aspect || "16:9")}`, { waitUntil: 'networkidle0' });
 await p.evaluate(() => window.ready);
 const base = { ...job.settings, width: W };
 for (let i = 0; i < N; i++) {
