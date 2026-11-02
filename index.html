@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Angles</title>
-<link rel="icon" href="logo.svg">
+<link rel="icon" href="app/logo.svg">
 <style>
   :root {   /* Signal, dark (the default): cool graphite with one vermilion accent */
     --bg:#101112; --panel:#17181a; --card:#1e2023; --card2:#26282b; --line:#2b2d31; --line2:#1d1f22; --sunk:#131416; --raise:#24262a;
@@ -596,9 +596,9 @@ cd ~/.claude/skills/angles && npm i</pre>
   <hans-footer padding="none" text-color="#ececf0"></hans-footer>
 </div></div>
 <div id="toast"></div>
-<script src="footer.js"></script><div id="tip"></div>
+<script src="app/footer.js"></script><div id="tip"></div>
 
-<script src="shader.js"></script>
+<script src="app/shader.js"></script>
 <script>
 // Every knob. [min, max, step, default, label]
 const P = {
@@ -905,7 +905,7 @@ $('#rail').onclick = e => { const b = e.target.closest('button'); if (b) openTab
 // --- feedback
 let FB = [];
 async function loadFB(){
-  try { FB = (await (await fetch('feedback.jsonl')).text()).trim().split('\n').filter(Boolean).map(JSON.parse); } catch { FB = []; }
+  try { FB = (await (await fetch('lab/feedback.jsonl')).text()).trim().split('\n').filter(Boolean).map(JSON.parse); } catch { FB = []; }
 }
 function latest(imgId, preset){ for (let i=FB.length-1;i>=0;i--){ const f=FB[i]; if (f.img===imgId && f.preset===preset && f.rating) return f.rating; } }
 async function send(rating){
@@ -973,7 +973,7 @@ function playMark(svg){
   step(); return () => { clearTimeout(t); show(''); };
 }
 let stopMark = null, stopAboutMark = null;
-fetch('logo.svg').then(r => r.text()).then(t => { $('#brandmark').innerHTML = t; $('#brandmark svg').classList.add('js');
+fetch('app/logo.svg').then(r => r.text()).then(t => { $('#brandmark').innerHTML = t; $('#brandmark svg').classList.add('js');
   $('#aboutmark').innerHTML = t; $('#aboutmark svg').classList.add('js'); }).catch(() => {});
 $('#brand').onmouseenter = () => { stopMark?.(); stopMark = playMark($('#brandmark svg')); };
 $('#brand').onmouseleave = () => { stopMark?.(); stopMark = null; };
@@ -1316,7 +1316,7 @@ addEventListener('pointerdown', e => { if (!e.target.closest('#applypop') && !e.
 // --- timeline. A key is a whole camera (angle, lens, zoom, framing, focus, aperture, screen look on/off) at a moment.
 // It either glides in from the key before (eased across the gap) or cuts to it. Once a shot has keys, camera changes
 // (drag, zoom, focus click, an angle, flat, the camera sliders) write a key at the playhead. Screen look and frame
-// are the whole clip's and never make keys. With no keys the camera just holds. shotAt is shared with motion.mjs.
+// are the whole clip's and never make keys. With no keys the camera just holds. shotAt is shared with app/motion.mjs.
 const ease = k => k*k*(3-2*k);
 // Easing: CSS-style cubic beziers, y held to 0..1 so a tween never overshoots its keys (or slides the background in).
 // 'auto' is the smooth path below. A key's ease shapes the tween into it; the shot's speed curve ramps the whole move.
@@ -2548,7 +2548,7 @@ async function snapshot(){
 }
 $('#snap').onclick = snapshot;
 
-// Motion renders (motion.mjs): motionFrame draws one frame with the given settings at full export resolution.
+// Motion renders (app/motion.mjs): motionFrame draws one frame with the given settings at full export resolution.
 window.base = (preset, id) => { pre = PRESETS.findIndex(([n]) => n === preset); img = Math.max(0, IMAGES.findIndex(m => m.id === id)); compose(); return { ...S }; };
 let seqTex = null;
 window.motionFrame = (src, over, t, sh) => new Promise(res => { const im = new Image(); im.onload = () => {
@@ -2593,6 +2593,29 @@ window.angles = {
     return { ok: !warn.length, warnings: warn, seconds: +shotT().toFixed(2), speed: +ms.p95.toFixed(2), budget: LEVELS[sh.level] };
   },
   job: (name, width) => ({ ...makeJob(name), ...(width ? { width } : {}) }),
+  // a quick look without a render: each variant (the spec with a few fields changed) as a row of n frames from across
+  // the shot, drawn exactly as the export would draw them, on one small sheet. Returns the sheet and each row's report.
+  async check(spec = {}, variants = [{}], n = 4, w = 400){
+    const rows = [], S0 = { ...S }, lf0 = lastFilter, asp0 = aspectName();
+    for (const v of variants) {   // plan every row first: drawing a frame swaps the studio's live picture out
+      Object.assign(S, S0); lastFilter = lf0; setAspect(asp0);   // each row starts from the same place, not from the last row
+      const rep = this.apply({ ...spec, ...v }), sh = shotFor(), base = { ...S, ...free, width: w }, T = shotT();
+      const times = Array.from({ length: n }, (_, i) => (i + .5)/n*T);
+      const src = t => { if (!cur?.rec) return `src/${IMAGES[img].id}.png`; const at = videoAt(t), m = recMeta(at.rec) || cur.rec;
+        return `rec/${m.id}/${String(Math.min(m.frames - 1, Math.round(at.time*m.fps))).padStart(4, '0')}.${m.ext}`; };
+      rows.push({ rep, label: Object.entries(v).map(([k, x]) => `${k} ${typeof x === 'object' ? JSON.stringify(x) : x}`).join(' · '), sh, base, shots: times.map(t => [t, src(t)]) });
+    }
+    const h = Math.round(w/ASPECT), pad = rows.length > 1 ? 22 : 0, out = document.createElement('canvas'), g = out.getContext('2d');
+    out.width = w*n; out.height = (h + pad)*rows.length; g.fillStyle = '#16171a'; g.fillRect(0, 0, out.width, out.height);
+    for (const [r, row] of rows.entries()) {
+      if (pad) { g.fillStyle = '#c9ccd2'; g.font = '13px -apple-system, sans-serif'; g.fillText(`${r + 1}. ${row.label || 'as specified'}`, 8, r*(h + pad) + 15); }
+      for (const [i, [t, file]] of row.shots.entries()) {
+        const url = await window.motionFrame(file, { ...row.base, ...window.shotAt(row.base, row.sh, t), seed: .123 }, t, row.sh);
+        const im = new Image(); im.src = url; await im.decode(); g.drawImage(im, i*w, r*(h + pad) + pad, w, h);
+      }
+    }
+    return { sheet: out.toDataURL('image/jpeg', .82), rows: rows.map(x => ({ ...x.rep, ...(x.label ? { variant: x.label } : {}) })) };
+  },
 };
 
 // ?img=loupe&preset=gentle&aspect=3:1&k=v...

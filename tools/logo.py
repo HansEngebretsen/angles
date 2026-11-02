@@ -48,4 +48,4 @@ body = (f'<polygon class="al-ink" points="{pts(outer)}"/>' + ''.join(f'<polygon 
 # the perspectives, for scripts that play the mark: data-pers="LKRT OF ..."
 pers_attr = ' '.join(p for p in PERS if p)
 svg = f'<svg class="al-logo" data-pers="{pers_attr}" xmlns="http://www.w3.org/2000/svg" viewBox="14 36 584 538" role="img" aria-label="Angles"><defs>{clips}</defs><style>{"".join(css)}</style>{body}</svg>'
-open('logo.svg', 'w').write(svg); print('logo.svg', len(svg), 'bytes')
+open('app/logo.svg', 'w').write(svg); print('app/logo.svg', len(svg), 'bytes')

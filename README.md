@@ -50,13 +50,13 @@ A small studio that turns a screen recording into a calm, photographic product s
 </td>
 <td width="50%">
 <h3>Click to focus</h3>
-<p>Pick a point on the picture, then scroll to set how much stays sharp. A purple overlay shows the focus while you adjust it.</p>
+<p>Pick a point and the focus pulls to it, everything around it falling soft. Scroll to set how much stays sharp; a purple overlay shows the area while you adjust it.</p>
 </td>
 </tr>
 <tr valign="top">
 <td width="50%">
 <h3>Try a screen look</h3>
-<p>Bright, glossy, pixel macro, film print. Each one adds the texture of a real display while keeping whites white.</p>
+<p>Bright, crisp grain, pixel macro, glossy, film print. Up close, each one gives the glass a real texture (grain, a pixel grid, a sheen) while keeping whites white.</p>
 </td>
 <td width="50%">
 <img src="demos/looks.gif" alt="Try a screen look">
@@ -64,20 +64,11 @@ A small studio that turns a screen recording into a calm, photographic product s
 </tr>
 <tr valign="top">
 <td width="50%">
-<img src="demos/panel.gif" alt="Make room, light or dark">
+<img src="demos/skill.png" alt="Ask Claude for the video">
 </td>
-<td width="50%">
-<h3>Make room, light or dark</h3>
-<p>Hide the panel and the frame glides out to fill the space. Switch between light and dark from the header.</p>
-</td>
-</tr>
-<tr valign="top">
 <td width="50%">
 <h3>Ask Claude for the video</h3>
-<p>The repo is also a Claude skill. Claude writes a ten-line spec and runs <code>node angles.mjs make spec.json</code>, which applies it in the studio and renders it on your machine. It returns the mp4 and one small contact sheet to check, so a video costs a few hundred tokens. To install it, run <code>git clone https://github.com/HansEngebretsen/angles ~/.claude/skills/angles</code> and then <code>npm i</code> in that folder.</p>
-</td>
-<td width="50%">
-<img src="demos/skill.png" alt="Ask Claude for the video">
+<p>The repo is also a Claude skill. Claude writes a ten-line spec and runs <code>node angles.mjs check</code> to compare a few looks side by side on one small sheet in about five seconds, then <code>make</code> renders the one it picks, all on your machine. To install it, run <code>git clone https://github.com/HansEngebretsen/angles ~/.claude/skills/angles</code> and then <code>npm i</code> in that folder.</p>
 </td>
 </tr>
 </table>

@@ -1,5 +1,5 @@
 import fs from 'fs';
-import { open, hero, recordGif, glide, jump, press, release, hold, click, rect } from '/Users/hansengebretsen/Sites/config/skills/hansreadme/scripts/demo.mjs';
+import { open, hero, recordGif, glide, jump, press, release, hold, click, rect, cover, showKeys } from '/Users/hansengebretsen/Sites/config/skills/hansreadme/scripts/demo.mjs';
 
 const URL = 'http://localhost:8790/';
 const OUT = '/Users/hansengebretsen/Dropbox/Design/work/2026 - folio update/photomock/demos';
@@ -73,59 +73,8 @@ if (want('styles')) {
   await browser.close();
 }
 
-// click to focus, then scroll to set how much is sharp
-if (want('focus')) {
-  const { browser, page } = await open(URL, opts(1));
-  await seek(page, 2, 1200);
-  await tab(page, 'point');
-  await new Promise(r => setTimeout(r, 400));
-  const pick = await rect(page, '#fppick');
-  await recordGif(page, STAGEPANEL, `${OUT}/focus.gif`, async (frame) => {
-    await jump(page, 900, 600);
-    await hold(frame, 400);
-    await click(page, frame, pick.cx, pick.cy);
-    await hold(frame, 300);
-    await click(page, frame, 560, 300);
-    await hold(frame, 700);
-    for (let i = 0; i < 8; i++) { await page.mouse.wheel({ deltaY: 40 }); await frame(60); }
-    await hold(frame, 500);
-    for (let i = 0; i < 12; i++) { await page.mouse.wheel({ deltaY: -40 }); await frame(60); }
-    await hold(frame, 1200);
-  }, { colors: 256, width: 760, dump: DUMP });
-  await browser.close();
-}
 
-// screen looks
-if (want('looks')) {
-  const { browser, page } = await open(URL, opts(1));
-  await seek(page, 5.2, 1200);
-  await tab(page, 'screen');
-  await new Promise(r => setTimeout(r, 400));
-  const chips = await page.evaluate(() => [...document.querySelectorAll('#filters button')].map(b => { const r = b.getBoundingClientRect(); return { cx: r.x + r.width / 2, cy: r.y + r.height / 2, on: b.classList.contains('on') }; }));
-  const order = [2, 5, 3, chips.findIndex(c => c.on)].filter(i => i >= 0 && chips[i]);
-  await recordGif(page, STAGEPANEL, `${OUT}/looks.gif`, async (frame) => {
-    await jump(page, 1000, 600);
-    await hold(frame, 400);
-    for (const i of order) { await click(page, frame, chips[i].cx, chips[i].cy); await hold(frame, 1000); }
-  }, { colors: 256, width: 760, dump: DUMP });
-  await browser.close();
-}
 
-// hide the panel and the frame takes the room; light / dark
-if (want('panel')) {
-  const { browser, page } = await open(URL, opts(1));
-  await seek(page, 5.2, 1200);
-  const side = await rect(page, '#sidebtn'), mode = await rect(page, '#modebtn');
-  await recordGif(page, { x: 0, y: 0, width: W, height: H }, `${OUT}/panel.gif`, async (frame) => {
-    await jump(page, 1200, 300);
-    await hold(frame, 400);
-    await click(page, frame, side.cx, side.cy); await stepAnims(page, frame); await hold(frame, 700);
-    await click(page, frame, mode.cx, mode.cy); await hold(frame, 900);
-    await click(page, frame, side.cx, side.cy); await stepAnims(page, frame); await hold(frame, 700);
-    await click(page, frame, mode.cx, mode.cy); await hold(frame, 600);
-  }, { colors: 256, width: 800, dump: DUMP });
-  await browser.close();
-}
 
 // up close at a real angle: the Close style, played through
 if (want('close')) {
@@ -159,5 +108,52 @@ if (want('skill')) {
     <div><div style="color:#8b949e;margin-bottom:10px">sheet.jpg</div><img src="data:image/jpeg;base64,${sheet}" style="width:100%;border-radius:10px;border:1px solid #3d444d"></div></body>`);
   await new Promise(r => setTimeout(r, 300));
   await hero(page, `${OUT}/skill.png`);
+  await browser.close();
+}
+
+
+// click to focus, up close: the focus starts low on the screen, the camera moves in, one click puts the face in focus
+if (want('focus')) {
+  const { browser, page } = await open(URL, opts(2));
+  await page.evaluate(() => { window.angles.apply({ style: 'float', focus: { at: 0, u: .12, v: .9, size: 80 } }); $('#quality').value = '2400'; });
+  await seek(page, 2, 1200);
+  await tab(page, 'point');
+  await new Promise(r => setTimeout(r, 400));
+  const pick = await rect(page, '#fppick'), c = await rect(page, '#c');
+  const face = { x: c.x + c.width * .57, y: c.y + c.height * .36 };
+  const MOMENT = cover([{ x: c.x + c.width * .3, y: c.y + c.height * .1, width: c.width * .5, height: c.height * .55 }], 0);
+  await recordGif(page, STAGEPANEL, `${OUT}/focus.gif`, async (frame) => {
+    await jump(page, 900, 600);
+    await hold(frame, 500);
+    await click(page, frame, pick.cx, pick.cy);
+    await hold(frame, 250);
+    await glide(page, frame, face.x, face.y, { zoom: MOMENT });
+    await press(page, frame); await release(page, frame);
+    await hold(frame, 1500);
+    for (let i = 0; i < 6; i++) { await page.mouse.wheel({ deltaY: -40 }); await frame(70); }
+    await hold(frame, 1800);
+    await glide(page, frame, 900, 600, { zoom: frame.clip });
+    await hold(frame, 500);
+  }, { colors: 256, width: 640, dump: DUMP });
+  await browser.close();
+}
+
+// screen looks, a few inches from the glass: the texture of each one, named as it changes
+if (want('looks')) {
+  const { browser, page } = await open(URL, opts(2));
+  await page.evaluate(() => { toggleSidebar(true, true); $('#quality').value = '2400'; });
+  await seek(page, 2, 1200);
+  // the studio's own camera, a few inches from the glass, held still (so the look's texture is rendered big, not upscaled)
+  await page.evaluate(() => { applyHead = () => {}; Object.assign(S, { zoom: 2.6, cu: .4, cv: .42, rotX: 6, rotY: -10, rotZ: 1, fov: 30, aperture: 0, fxAmt: 1 }); render(); });
+  const c = await rect(page, '#c'), size = Math.round(c.height * .9);
+  const clip = { x: c.x + c.width / 2 - size / 2, y: c.y + c.height / 2 - size / 2, width: size, height: size };
+  await page.mouse.move(W - 4, H - 4);
+  await recordGif(page, clip, `${OUT}/looks.gif`, async (frame) => {
+    for (const look of ['bright', 'crisp grain', 'pixel macro', 'glossy', 'film print']) {
+      await page.evaluate(l => { applyFilter(l); S.fxAmt = 1; render(); }, look);   // applyFilter keeps the camera
+      await showKeys(page, look, 1300, { at: { x: clip.x + size / 2, y: clip.y + 34 } });
+      await hold(frame, 1300);
+    }
+  }, { colors: 256, width: 640, dump: DUMP });
   await browser.close();
 }

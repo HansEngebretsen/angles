@@ -1,4 +1,4 @@
-// Render a studio shot to mp4: node motion.mjs <job.json>
+// Render a studio shot to mp4: node app/motion.mjs <job.json> (run from the repo root; serve.py's /export does this)
 // job: { name, img, aspect, settings, shot: { keys, loop, hb, ha, sway, T }, rec?, width? }  (the studio's Export writes one)
 // Frames come from job.seqDir (a studio recording, trimmed and crossfaded by the server), else rec/<img>-breathe/, else the still.
 // The camera is window.shotAt from the studio, so the preview and the export match.

@@ -1,10 +1,10 @@
 # Static server for the studio, plus:
-#   POST /feedback          append one JSON line to feedback.jsonl
+#   POST /feedback          append one JSON line to lab/feedback.jsonl
 #   POST /upload?name=x     a screen recording (any video ffmpeg reads) -> rec/x/: 30fps frames, proxy.mp4 for live play, meta.json
 #   GET  /recordings        meta.json of every recording, newest first
 #   GET  /stills            names of the stills in src/ (dropped images land there too)
 #   GET  /bestloop?rec=x    the in/out frames where the end matches the start best (so the loop needs little or no crossfade)
-#   POST /export            start rendering a shot with motion.mjs in the background (with "rec": trim + crossfade the recording first)
+#   POST /export            start rendering a shot with app/motion.mjs in the background (with "rec": trim + crossfade the recording first)
 #   GET  /export-status?name=x   where that render is: preparing, rendering (done/total frames), encoding, done (mp4) or failed
 #   GET  /activity?rec=x    where things change in each frame of a recording (cursor, typing, a lens), smoothed: [[u, v, energy], ...]
 import json, os, re, shutil, subprocess, sys, threading, time
@@ -15,7 +15,7 @@ import numpy as np
 from PIL import Image
 
 ROOT = Path(__file__).parent
-LOG = ROOT / 'feedback.jsonl'
+LOG = ROOT / 'lab/feedback.jsonl'
 REC = ROOT / 'rec'
 FPS = 30
 PORT = 8790  # set from argv at startup; renders talk back to this server
@@ -118,7 +118,7 @@ def run_export(job):
             job['seqDir'] = str(seq.relative_to(ROOT))
         path = loops / f"{job['name']}.json"; path.write_text(json.dumps(job))
         st['state'] = 'rendering'
-        p = subprocess.Popen(['node', 'motion.mjs', str(path)], cwd=ROOT, env={**os.environ, 'ANGLES_PORT': str(PORT)}, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        p = subprocess.Popen(['node', 'app/motion.mjs', str(path)], cwd=ROOT, env={**os.environ, 'ANGLES_PORT': str(PORT)}, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
         for line in p.stdout:
             if line.startswith('progress '): _, a, b = line.split(); st.update(done=int(a), total=int(b))
             elif line.startswith('encoding'): st['state'] = 'encoding'
