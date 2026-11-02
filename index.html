@@ -48,7 +48,7 @@
     display:grid; grid-template-columns:minmax(0,1fr) var(--sidecol, var(--side, 396px)); grid-template-rows:52px minmax(0,1fr) 52px var(--tlh, 200px); overflow:hidden; }
   body.sizing { transition:none; }
   body.nosb { --sidecol: 0px; }
-  aside { width:var(--side, 396px); justify-self:start; }
+  aside { width:var(--side, 396px); justify-self:start; background:var(--bg); z-index:2; }   /* solid, so the frame slides under it instead of showing through */
   body.nosb aside { visibility:hidden; pointer-events:none; }
   button, select, input { font:inherit; color:inherit; }
   ::-webkit-scrollbar { width:6px; height:6px; } ::-webkit-scrollbar-track { background:transparent; }
