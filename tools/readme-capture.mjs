@@ -1,3 +1,4 @@
+import fs from 'fs';
 import { open, hero, recordGif, glide, jump, press, release, hold, click, rect } from '/Users/hansengebretsen/Sites/config/skills/hansreadme/scripts/demo.mjs';
 
 const URL = 'http://localhost:8790/';
@@ -123,5 +124,40 @@ if (want('panel')) {
     await click(page, frame, side.cx, side.cy); await stepAnims(page, frame); await hold(frame, 700);
     await click(page, frame, mode.cx, mode.cy); await hold(frame, 600);
   }, { colors: 256, width: 800, dump: DUMP });
+  await browser.close();
+}
+
+// up close at a real angle: the Close style, played through
+if (want('close')) {
+  const { browser, page } = await open(URL, opts(1));
+  await page.evaluate(() => window.angles.apply({ style: 'close', level: 'gentle', look: 'glossy', background: 'mist', shadow: 'soft', trim: { in: 6, out: 11 } }));
+  const st = await rect(page, '#c');
+  await page.mouse.move(W - 4, H - 4);
+  await recordGif(page, { x: st.x, y: st.y, width: st.width, height: st.height }, `${OUT}/close.gif`, async (frame) => {
+    await playThrough(page, frame, 0, 5.4, .08);
+  }, { colors: 256, width: 560, dump: DUMP });
+  await browser.close();
+}
+
+// the skill: a spec on the left, the contact sheet it rendered on the right (a staged card on GitHub dark)
+if (want('skill')) {
+  const { browser, page } = await open('about:blank', { scale: 2, width: 1200, height: 480 });
+  const sheet = fs.readFileSync(process.env.SHEET).toString('base64');
+  await page.setContent(`<body style="margin:0;background:#212830;font:15px/1.55 ui-monospace,Menlo,monospace;color:#e6edf3;display:grid;grid-template-columns:420px 1fr;gap:28px;padding:40px;box-sizing:border-box;height:480px">
+    <div><div style="color:#8b949e;margin-bottom:10px">spec.json</div><pre style="margin:0;background:#151b23;border:1px solid #3d444d;border-radius:10px;padding:18px;font-size:14px">{
+  "source": "~/Desktop/loupe.mov",
+  "trim": { "in": 6, "out": 11 },
+  "style": "close",
+  "level": "gentle",
+  "look": "glossy",
+  "background": "mist",
+  "shadow": "soft",
+  "overlays": [
+    { "at": 1, "keys": ["⌘", "V"] }
+  ]
+}</pre><div style="color:#8b949e;margin-top:14px">$ node angles.mjs make spec.json</div><div style="color:#7ee787">{ "ok": true, "mp4": "…/loupe-close.mp4" }</div></div>
+    <div><div style="color:#8b949e;margin-bottom:10px">sheet.jpg</div><img src="data:image/jpeg;base64,${sheet}" style="width:100%;border-radius:10px;border:1px solid #3d444d"></div></body>`);
+  await new Promise(r => setTimeout(r, 300));
+  await hero(page, `${OUT}/skill.png`);
   await browser.close();
 }
