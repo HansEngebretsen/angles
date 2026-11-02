@@ -1,0 +1,8 @@
+{ "name": "loupe-styles", "rec": "loupe-take", "variants": [
+  { "name": "Float · whisper",  "style": "float", "level": "whisper", "crop": [0, 0.082, 1, 1], "in": 0, "out": 10, "bg": "#f1f0ec", "look": "bright", "amount": 0.8 },
+  { "name": "Angle · whisper",  "style": "angle", "level": "whisper", "crop": [0, 0.082, 1, 1], "in": 0, "out": 10, "bg": "#f1f0ec", "look": "bright", "amount": 0.8 },
+  { "name": "Fly-by · whisper", "style": "flyby", "level": "whisper", "crop": [0, 0.082, 1, 1], "in": 0, "out": 10, "bg": "#f1f0ec", "look": "bright", "amount": 0.8 },
+  { "name": "Focus · whisper",  "style": "focus", "level": "whisper", "crop": [0, 0.082, 1, 1], "in": 0, "out": 10, "bg": "#f1f0ec", "look": "bright", "amount": 0.8 },
+  { "name": "Fly-by · gentle",  "style": "flyby", "level": "gentle",  "crop": [0, 0.082, 1, 1], "in": 0, "out": 10, "bg": "#f1f0ec", "look": "bright", "amount": 0.8 },
+  { "name": "Float · still",    "style": "float", "level": "still",   "crop": [0, 0.082, 1, 1], "in": 0, "out": 10, "bg": "#ffffff", "look": "bright", "amount": 0.8 }
+]}

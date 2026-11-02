@@ -1,0 +1,11 @@
+{ "name": "loupe-subtle", "rec": "loupe-take", "variants": [
+  { "name": "original",      "crop": [0, 0.082, 1, 1], "in": 0, "out": 10, "preset": "flat", "look": "none", "amount": 0, "follow": false,
+    "keys": [{ "t": 0, "cam": { "zoom": 1 } }] },
+  { "name": "clean float",   "crop": [0, 0.082, 1, 1], "in": 0, "out": 10, "preset": "flat", "fill": false, "bg": "#efeee9", "look": "bright", "amount": 0.6, "follow": false,
+    "keys": [{ "t": 0, "cam": { "zoom": 0.86, "fx": 0.6 } }, { "t": 1e9, "cam": { "zoom": 0.885, "fx": 0.6 }, "ease": "cruise" }] },
+  { "name": "whisper push",  "crop": [0, 0.082, 1, 1], "in": 0, "out": 10, "preset": "gentle", "intensity": 0.25, "move": "push in", "look": "bright", "amount": 0.8 },
+  { "name": "angled pan",    "crop": [0, 0.082, 1, 1], "in": 0, "out": 10, "preset": "gentle", "intensity": 0.45, "move": "pan right", "bg": "#ffffff", "look": "bright", "amount": 0.7, "follow": false },
+  { "name": "close follow",  "crop": [0, 0.082, 1, 1], "in": 0, "out": 10, "preset": "close in", "intensity": 0.45, "move": "hold", "look": "crisp grain", "amount": 0.8 },
+  { "name": "long lens glide","crop": [0, 0.082, 1, 1], "in": 0, "out": 10, "preset": "long lens", "intensity": 0.45, "move": "settle", "look": "glossy", "amount": 0.7 },
+  { "name": "film wake",     "crop": [0, 0.082, 1, 1], "in": 0, "out": 10, "preset": "gentle", "intensity": 0.45, "move": "wake up", "look": "film print", "amount": 1 }
+]}

@@ -1,0 +1,177 @@
+{
+ "about": "Loupe intro: establishing near-flat, ease into the lens, cut to Copy, cut to Slides, settle wide on the payoff. Times are shot seconds (video time + the 0.4s first-frame hold).",
+ "rec": "loupe-take",
+ "aspect": "16:9",
+ "filter": "clean glass",
+ "look": {
+  "grain": 0.028,
+  "grit": 0.45,
+  "edge": 0.5,
+  "bg": "#ffffff",
+  "radius": 0.012,
+  "shadow": 0,
+  "vig": 0.12
+ },
+ "shot": {
+  "hb": 0.4,
+  "ha": 1.2,
+  "loop": false,
+  "sway": 0.35,
+  "follow": false
+ },
+ "keys": [
+  {
+   "t": 0,
+   "mode": "glide",
+   "label": "wide",
+   "cam": {
+    "rotX": 3,
+    "rotY": -2,
+    "rotZ": 0.4,
+    "zoom": 1.18,
+    "cu": 0.55,
+    "cv": 0.55,
+    "fu": 0.5,
+    "fv": 0.4,
+    "aperture": 6,
+    "fx": 0.55
+   }
+  },
+  {
+   "t": 2.6,
+   "mode": "drift",
+   "label": "wide",
+   "cam": {
+    "rotX": 6,
+    "rotY": -4.5,
+    "rotZ": 0.9,
+    "zoom": 1.3,
+    "cu": 0.58,
+    "cv": 0.52,
+    "fu": 0.5,
+    "fv": 0.32,
+    "aperture": 12,
+    "fx": 0.8
+   }
+  },
+  {
+   "t": 4.4,
+   "mode": "drift",
+   "label": "lens",
+   "cam": {
+    "rotX": 13,
+    "rotY": -9,
+    "rotZ": 2.5,
+    "zoom": 1.75,
+    "cu": 0.64,
+    "cv": 0.6,
+    "fu": 0.66,
+    "fv": 0.62,
+    "aperture": 30,
+    "fx": 1
+   }
+  },
+  {
+   "t": 7.6,
+   "mode": "drift",
+   "label": "lens",
+   "cam": {
+    "rotX": 14,
+    "rotY": -7.5,
+    "rotZ": 2.8,
+    "zoom": 1.88,
+    "cu": 0.65,
+    "cv": 0.62,
+    "fu": 0.66,
+    "fv": 0.63,
+    "aperture": 32,
+    "fx": 1
+   }
+  },
+  {
+   "t": 8.0,
+   "mode": "cut",
+   "label": "copy",
+   "cam": {
+    "rotX": 14,
+    "rotY": 8,
+    "rotZ": -2.5,
+    "zoom": 2.2,
+    "cu": 0.17,
+    "cv": 0.84,
+    "fu": 0.07,
+    "fv": 0.95,
+    "aperture": 36,
+    "fx": 1
+   }
+  },
+  {
+   "t": 9.9,
+   "mode": "drift",
+   "label": "copy",
+   "cam": {
+    "rotX": 13,
+    "rotY": 6.5,
+    "rotZ": -2.2,
+    "zoom": 2.32,
+    "cu": 0.17,
+    "cv": 0.84,
+    "fu": 0.07,
+    "fv": 0.95,
+    "aperture": 36,
+    "fx": 1
+   }
+  },
+  {
+   "t": 10.4,
+   "mode": "cut",
+   "label": "slides",
+   "cam": {
+    "rotX": 7,
+    "rotY": -5,
+    "rotZ": 1,
+    "zoom": 1.32,
+    "cu": 0.5,
+    "cv": 0.58,
+    "fu": 0.34,
+    "fv": 0.57,
+    "aperture": 18,
+    "fx": 1
+   }
+  },
+  {
+   "t": 12.4,
+   "mode": "drift",
+   "label": "slides",
+   "cam": {
+    "rotX": 6,
+    "rotY": -4,
+    "rotZ": 0.8,
+    "zoom": 1.38,
+    "cu": 0.5,
+    "cv": 0.58,
+    "fu": 0.38,
+    "fv": 0.57,
+    "aperture": 18,
+    "fx": 1
+   }
+  },
+  {
+   "t": 15.53,
+   "mode": "glide",
+   "label": "payoff",
+   "cam": {
+    "rotX": 3,
+    "rotY": -1.8,
+    "rotZ": 0.3,
+    "zoom": 1.24,
+    "cu": 0.52,
+    "cv": 0.57,
+    "fu": 0.48,
+    "fv": 0.56,
+    "aperture": 9,
+    "fx": 0.9
+   }
+  }
+ ]
+}

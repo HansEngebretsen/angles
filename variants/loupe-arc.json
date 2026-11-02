@@ -1,0 +1,7 @@
+{ "name": "loupe-arc", "rec": "loupe-take", "variants": [
+  { "name": "Fly-by arc · whisper", "style": "flyby", "level": "whisper", "crop": [0, 0.082, 1, 1], "in": 0, "out": 10, "bg": "#f1f0ec", "amount": 0.8, "shadow": { "shadow": 0.5, "soft": 1, "spread": -0.3 } },
+  { "name": "Fly-by arc · gentle",  "style": "flyby", "level": "gentle",  "crop": [0, 0.082, 1, 1], "in": 0, "out": 10, "bg": "#f1f0ec", "amount": 0.8, "shadow": { "shadow": 0.5, "soft": 1, "spread": -0.3 } },
+  { "name": "Float · softest shadow", "style": "float", "level": "whisper", "crop": [0, 0.082, 1, 1], "in": 0, "out": 10, "bg": "#ffffff", "amount": 0.8, "shadow": { "shadow": 0.6, "soft": 1, "spread": -0.4 } },
+  { "name": "3 clips stitched", "style": "float", "level": "whisper", "crop": [0, 0.082, 1, 1], "bg": "#f1f0ec", "amount": 0.8, "shadow": { "shadow": 0.5, "soft": 0.8, "spread": -0.2 },
+    "segs": [{ "rec": "loupe-take", "in": 0, "out": 3.5 }, { "rec": "loupe-take", "in": 6.5, "out": 10 }, { "rec": "loupe", "in": 2, "out": 5 }] }
+]}
