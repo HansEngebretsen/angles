@@ -1,8 +1,13 @@
 import fs from 'fs';
-import { open, hero, recordGif, glide, jump, press, release, hold, click, rect, cover, showKeys } from '/Users/hansengebretsen/Sites/config/skills/hansreadme/scripts/demo.mjs';
+import os from 'os';
+import path from 'path';
+import { fileURLToPath } from 'url';
+// the recorder from the hansreadme skill (set HANSREADME to its scripts folder if it lives elsewhere)
+const REC = process.env.HANSREADME || path.join(os.homedir(), 'Sites/config/skills/hansreadme/scripts');
+const { open, hero, recordGif, glide, jump, press, release, hold, click, rect, cover, showKeys } = await import(path.join(REC, 'demo.mjs'));
 
 const URL = 'http://localhost:8790/';
-const OUT = '/Users/hansengebretsen/Dropbox/Design/work/2026 - folio update/photomock/demos';
+const OUT = path.join(path.dirname(fileURLToPath(import.meta.url)), '../demos');
 const DUMP = process.env.DUMP;
 const only = process.argv[2];
 const want = (name) => !only || only === name;

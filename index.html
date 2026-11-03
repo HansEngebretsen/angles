@@ -150,6 +150,9 @@
   #about li b { color:var(--ink); font-weight:600; }
   #about .uirow + .uirow { margin-top:-12px; }
   #about .skill { margin:0 0 22px; }
+  #about .web { display:none; color:var(--mute); margin:0 0 18px; line-height:1.55; font-size:13px; }
+  body.static #about .web { display:block; }
+  body.static #findloop, body.static [data-tab="notes"] { display:none !important; }   /* server-only: the loop finder and the lab notes */
   #about .skill .top { display:flex; align-items:center; justify-content:space-between; color:var(--ink); font-size:12.5px; font-weight:600; margin-bottom:6px; }
   #about .skill .top button { font-size:11.5px; color:var(--mute); padding:2px 6px; }
   #about .skill pre { margin:0; background:var(--sunk); border:1px solid var(--line); border-radius:9px; padding:9px 11px; font:11px/1.6 ui-monospace, "SF Mono", Menlo, monospace; color:var(--ink); white-space:pre; overflow-x:auto; }
@@ -586,6 +589,7 @@
     <li><b>Trim, split and stitch</b> clips, crop the source, pick a frame shape.</li>
     <li><b>Export</b> a video, or snapshot a frame at full size.</li>
   </ul>
+  <p class="web">This is the web version. Your files stay in your browser, and exports render here at 1920 wide. For loop crossfades and the Claude skill, run it on your machine.</p>
   <div class="skill"><div class="top"><span>Use it from Claude</span><button class="ghost" id="skillcopy">Copy</button></div>
     <pre id="skillcmd">git clone https://github.com/HansEngebretsen/angles \
   ~/.claude/skills/angles
@@ -649,6 +653,7 @@ const camOf = s => Object.fromEntries(CAM.map(k => [k, s[k]]));
 const SCREENK = ['grid','pitch','sheen','bloom','ca','light','lu','lv','expo','con','lift','sat','warm','grain','grit','matte','refl','glow','rim'];
 
 // Each image's subject: the part a shot should be about. zoom scales every angle for small apps.
+var SERVER = true; // false on the web version (static hosting): no serve.py, so media, activity and exports happen in the browser
 const IMAGES = [
   { id:'loupe',      u:.49, v:.39, zoom:1 },
   { id:'bingo',      u:.34, v:.55, zoom:1.15 },
@@ -735,8 +740,8 @@ function texFor(id){
     const v = document.createElement('video'); v.muted = true; v.playsInline = true; v.preload = 'auto';
     v.addEventListener('seeked', () => { ensureTicking(); if (!playing) scheduleThumbs(); });
     v.onloadeddata = () => { const t = newTex(); upload(t, v); res({ t, size:[v.videoWidth, v.videoHeight], video:v, rec:m.rec }); };
-    v.src = `rec/${m.rec.id}/proxy.mp4`; });
-  return texCache[id] = new Promise(res => { const im = new Image(); im.onload = () => { const t = newTex(); upload(t, im); res({ t, size:[im.width, im.height] }); }; im.src = `src/${id}.png`; });
+    v.src = m.rec.url || `rec/${m.rec.id}/proxy.mp4`; });
+  return texCache[id] = new Promise(res => { const im = new Image(); im.onload = () => { const t = newTex(); upload(t, im); res({ t, size:[im.width, im.height] }); }; im.src = m?.url || `src/${id}.png`; });
 }
 let cur = null, focusView = false, focusHold = false, focusPick = false, focusPreview = false, holdT = 0, kDrag = null, selK = null; // selK: { layer: 'cam' | 'pos' | 'foc', i }
 let fast = false; // lower resolution while dragging
@@ -915,7 +920,7 @@ async function send(rating){
   FB.push(entry); $('#note').value = ''; $('#note').blur();
   paintLists();
   toast(`${entry.move ? entry.move + ' · ' : ''}${entry.preset} · ${entry.img.replace('rec:','')}: ${rating || 'note'} saved`);
-  fetch('feedback', { method:'POST', body: JSON.stringify(entry) }).catch(() => toast('not saved: server down'));
+  if (SERVER) fetch('feedback', { method:'POST', body: JSON.stringify(entry) }).catch(() => toast('not saved: server down'));
 }
 function paintLog(){
   const id = IMAGES[img].id, name = lastLabel;
@@ -949,7 +954,7 @@ function paintThumbs(){
   Object.assign(S, keep); ensureTicking();
 }
 function paintStrip(){
-  $('#imgs').innerHTML = IMAGES.map((m,i) => `<div class="src ${m.rec?'rec':''} ${i===img?'on':''}" data-i="${i}" ${m.rec ? 'draggable="true" title="drag onto the clip lane to add it to this shot"' : ''}><div class="th"><img src="${m.rec ? `rec/${m.rec.id}/thumb.jpg` : `src/${m.id}.png`}" alt=""></div><div class="nm">${m.id.replace('rec:','')}${m.rec ? ` · ${(m.rec.frames/m.rec.fps).toFixed(1)}s` : ''}</div></div>`).join('');
+  $('#imgs').innerHTML = IMAGES.map((m,i) => `<div class="src ${m.rec?'rec':''} ${i===img?'on':''}" data-i="${i}" ${m.rec ? 'draggable="true" title="drag onto the clip lane to add it to this shot"' : ''}><div class="th"><img src="${m.rec ? m.rec.thumb || `rec/${m.rec.id}/thumb.jpg` : m.url || `src/${m.id}.png`}" alt=""></div><div class="nm">${m.id.replace('rec:','')}${m.rec ? ` · ${(m.rec.frames/m.rec.fps).toFixed(1)}s` : ''}</div></div>`).join('');
 }
 $('#imgs').ondragstart = e => { const s = e.target.closest('.src'), m = s && IMAGES[+s.dataset.i]; if (!m?.rec) return e.preventDefault(); e.dataTransfer.setData('text/x-rec', m.rec.id); e.dataTransfer.effectAllowed = 'copy'; };
 function insertRec(id, t){ const rm = recMeta(id); if (!rm || !cur?.rec) return; editSegs(ss => { const i = gapAt(t); ss.splice(i, 0, { rec: id, in: 0, out: +(rm.frames/rm.fps).toFixed(3) }); selSeg = i; }); toast(`added ${id}`); }
@@ -1535,8 +1540,8 @@ const TRACKS = {};
 const shotFor = (o = {}) => { const tr = trim(), sh = shot();
   return { ...sh, T: shotT(), tin: tr?.in || 0, clipLen: tr ? bodySecs() : 0, aim: tr && TRACKS[cur.rec.id] ? actionAim() : null, follow: tr && sh.follow !== false ? .35 : 0,
     A: cur ? srcA() : 0, out: ASPECT, fill: S.fill !== false, ...o }; };
-async function loadTrack(){ const r = cur?.rec; if (!r || TRACKS[r.id]) return;
-  const a = await (await fetch(`activity?rec=${r.id}`)).json(); if (a.ok) { TRACKS[r.id] = a.track; if (shot().style) { reflow(); undoBase = snapState(); } ensureTicking(); } }
+async function loadTrack(){ const r = cur?.rec; if (!r || TRACKS[r.id] || r.url) return;
+  const a = await (SERVER ? fetch(`activity?rec=${r.id}`).then(x => x.json()) : fetch(`rec/${r.id}/activity-v2.json`).then(x => x.json()).then(track => ({ ok: true, track }))).catch(() => ({})); if (a.ok) { TRACKS[r.id] = a.track; if (shot().style) { reflow(); undoBase = snapState(); } ensureTicking(); } }
 let free = {}, head = 0, playing = false, scrubbing = false, sel = -1;
 
 function applyHead(){ Object.assign(S, shotAt(free, shotFor(playing ? {} : { sway: 0 }), head)); } // still while editing
@@ -1562,7 +1567,7 @@ function videoFor(id){
   if (vids[id]) return vids[id];
   const v = vids[id] = document.createElement('video'); v.muted = true; v.playsInline = true; v.preload = 'auto';
   v.addEventListener('seeked', () => ensureTicking()); v.addEventListener('loadeddata', () => ensureTicking());
-  v.src = `rec/${id}/proxy.mp4`; return v;
+  v.src = recMeta(id)?.url || `rec/${id}/proxy.mp4`; return v;
 }
 // a recording shaped unlike the shot's is drawn to cover the shot's shape (centred), so nothing stretches
 function uploadFrame(v){
@@ -2342,8 +2347,9 @@ $('#loop').onclick = () => { const sh = shot(); sh.loop = !sh.loop; head = Math.
 let cropRatio = 'free', cropDrag = null;
 function cropSrc(){
   const m = IMAGES[img], r = m.rec;
-  if (!r) return `src/${m.id}.png`;
+  if (!r) return m.url || `src/${m.id}.png`;
   const at = videoAt(head), rr = recMeta(at.rec) || r;
+  if (!SERVER) { const v = videoFor(at.rec), c = document.createElement('canvas'); c.width = v.videoWidth; c.height = v.videoHeight; c.getContext('2d').drawImage(v, 0, 0); return c.toDataURL('image/jpeg', .9); }
   return `rec/${rr.id}/${String(Math.min(rr.frames - 1, Math.round(at.time*rr.fps))).padStart(4, '0')}.${rr.ext}`;
 }
 function fitCrop(){
@@ -2474,14 +2480,25 @@ $('#findloop').onclick = async () => {
   head = 0; reflow(); paintTimeline(); ensureTicking(); toast(`match score ${b.score} (lower is better)`);
 };
 
-// --- media: drop a screenshot or a recording anywhere; the server turns recordings into frames
+// --- media: drop a screenshot or a recording anywhere; the server turns recordings into frames.
+// With no server (the web version) the file never leaves the browser: it plays from an object URL.
+async function localMedia(blob, name){
+  const url = URL.createObjectURL(blob);
+  if (/^image\//.test(blob.type)) return { ok: true, kind: 'image', id: name, url };
+  const v = document.createElement('video'); v.muted = true; v.playsInline = true; v.src = url;
+  await new Promise((res, rej) => { v.onloadeddata = res; v.onerror = () => rej(new Error("this browser can't play that file")); });
+  await new Promise(res => { v.onseeked = res; v.currentTime = Math.min(.5, v.duration/2); });
+  const c = document.createElement('canvas'); c.width = 320; c.height = Math.round(320*v.videoHeight/v.videoWidth); c.getContext('2d').drawImage(v, 0, 0, c.width, c.height);
+  return { ok: true, kind: 'rec', id: name, frames: Math.round(v.duration*30), fps: 30, w: v.videoWidth, h: v.videoHeight, ext: 'jpg', url, thumb: c.toDataURL('image/jpeg', .8) };
+}
+const ingest = (blob, name, ext) => SERVER ? fetch(`upload?name=${encodeURIComponent(name)}&ext=${ext}`, { method:'POST', body: blob }).then(r => r.json()) : localMedia(blob, name);
 async function addMedia(blob, name, ext){
   openTab('media'); $('#cstatus').textContent = `Processing ${name}…`;
   try {
-    const r = await (await fetch(`upload?name=${encodeURIComponent(name)}&ext=${ext}`, { method:'POST', body: blob })).json();
+    const r = await ingest(blob, name, ext);
     if (!r.ok) throw new Error(r.error);
     const id = r.kind === 'image' ? r.id : 'rec:' + r.id; delete texCache[id];
-    const entry = r.kind === 'image' ? { id, u:.5, v:.5, zoom:1 } : { id, rec:r, u:.5, v:.5, zoom:1 };
+    const entry = r.kind === 'image' ? { id, url: r.url, u:.5, v:.5, zoom:1 } : { id, rec:r, u:.5, v:.5, zoom:1 };
     const at = IMAGES.findIndex(m => m.id === id);
     if (at >= 0) IMAGES[at] = entry; else IMAGES.push(entry);
     img = IMAGES.findIndex(m => m.id === id); paintStrip(); show();
@@ -2490,7 +2507,7 @@ async function addMedia(blob, name, ext){
 }
 async function uploadRec(f){
   const name = f.name.replace(/\.[^.]+$/, ''), ext = f.name.split('.').pop().toLowerCase(); toast(`processing ${name}…`);
-  try { const r = await (await fetch(`upload?name=${encodeURIComponent(name)}&ext=${ext}`, { method:'POST', body: f })).json(); if (!r.ok) throw new Error(r.error);
+  try { const r = await ingest(f, name, ext); if (!r.ok) throw new Error(r.error);
     const id = 'rec:' + r.id, entry = { id, rec: r, u:.5, v:.5, zoom:1 }, at = IMAGES.findIndex(m => m.id === id);
     if (at >= 0) IMAGES[at] = entry; else IMAGES.push(entry); paintStrip(); return r; } catch (err) { toast(`failed: ${err.message}`); }
 }
@@ -2512,6 +2529,7 @@ function makeJob(name){
 }
 async function exportShot(){
   if (exporting) return toast('already exporting');
+  if (!SERVER) return exportHere();
   pause();
   const job = makeJob(), name = job.name;
   const bar = $('#mbar'), st = $('#mstatus');
@@ -2538,10 +2556,44 @@ async function exportShot(){
   setTimeout(() => bar.classList.remove('on'), 1500);
 }
 $('#export').onclick = exportShot;
+// the web version: the same frames app/motion.mjs draws (shotAt per frame at 1920 wide), encoded to mp4 in the browser.
+// A loop's crossfade is left out; the local studio renders that.
+const seekVideo = (v, t) => new Promise(res => { if (v.readyState >= 2 && !v.seeking && Math.abs(v.currentTime - t) < .001) return res(); v.addEventListener('seeked', res, { once: true }); v.currentTime = t; });
+async function exportHere(){
+  if (!window.VideoEncoder) return toast('exporting needs Chrome, Edge or Safari');
+  pause(); applyHead();
+  const job = makeJob(), sh = job.shot, FPS = 30, N = Math.round(sh.T*FPS), base = { ...job.settings, width: 1920 };
+  const W = 1920, H = Math.round(W/ASPECT) & ~1, out = document.createElement('canvas'); out.width = W; out.height = H; const og = out.getContext('2d');
+  const bar = $('#mbar'), st = $('#mstatus'), keepS = { ...S }, keepHead = head, t0 = Date.now();
+  exporting = job.name; bar.classList.add('on'); bar.firstChild.style.width = '0'; st.textContent = 'Preparing…';
+  try {
+    const { Muxer, ArrayBufferTarget } = await import('https://cdn.jsdelivr.net/npm/mp4-muxer@5.2.1/+esm');
+    let config; for (const codec of ['avc1.640033', 'avc1.4d0033', 'avc1.42e033']) { const c = { codec, width: W, height: H, bitrate: 16e6, framerate: FPS }; if ((await VideoEncoder.isConfigSupported(c)).supported) { config = c; break; } }
+    if (!config) throw new Error("this browser can't encode H.264");
+    const muxer = new Muxer({ target: new ArrayBufferTarget(), video: { codec: 'avc', width: W, height: H }, fastStart: 'in-memory' });
+    let failed = null; const enc = new VideoEncoder({ output: (c, m) => muxer.addVideoChunk(c, m), error: e => { failed = e; } });
+    enc.configure(config);
+    for (let i = 0; i < N; i++) {
+      if (failed) throw failed;
+      const t = i/FPS; head = t;   // the preview's tick seeks toward head, so keep it on this frame
+      if (cur.rec) { const at = videoAt(t), v = videoFor(at.rec); await seekVideo(v, at.time); uploadFrame(v); }
+      Object.assign(S, base, shotAt(base, sh, t), { seed: (i*.618) % 1 }); render(true);
+      og.drawImage(withOverlays(t, sh), 0, 0, W, H);
+      const f = new VideoFrame(out, { timestamp: Math.round(i*1e6/FPS), duration: Math.round(1e6/FPS) }); enc.encode(f, { keyFrame: i % 60 === 0 }); f.close();
+      while (enc.encodeQueueSize > 6) await new Promise(r => setTimeout(r, 4));
+      const secs = (Date.now() - t0)/1000; st.textContent = `Rendering ${i + 1}/${N}${i > 5 ? ` · ${Math.ceil(secs/(i + 1)*(N - i - 1))}s left` : ''}`; bar.firstChild.style.width = ((i + 1)/N*95) + '%';
+    }
+    st.textContent = 'Encoding mp4…'; await enc.flush(); muxer.finalize();
+    const url = URL.createObjectURL(new Blob([muxer.target.buffer], { type: 'video/mp4' })), file = job.name + '.mp4';
+    const a = document.createElement('a'); a.href = url; a.download = file; a.click();
+    bar.firstChild.style.width = '100%'; st.innerHTML = `Saved <a href="${url}" download="${file}">${file}</a> · ${Math.round((Date.now() - t0)/1000)}s`;
+  } catch (err) { st.textContent = `Export failed: ${err.message || err}`; }
+  Object.assign(S, keepS); head = keepHead; exporting = null; ensureTicking(); setTimeout(() => bar.classList.remove('on'), 1500);
+}
 async function snapshot(){
   pause(); applyHead(); const r = cur?.rec, keep = cur, over = { ...S, seed: .123 };
   const shNow = shotFor();
-  if (r) { const at = videoAt(head), rr = recMeta(at.rec) || r; await motionFrame(`rec/${rr.id}/${String(Math.min(rr.frames - 1, Math.round(at.time*rr.fps))).padStart(4,'0')}.${rr.ext}`, over); }
+  if (r && SERVER) { const at = videoAt(head), rr = recMeta(at.rec) || r; await motionFrame(`rec/${rr.id}/${String(Math.min(rr.frames - 1, Math.round(at.time*rr.fps))).padStart(4,'0')}.${rr.ext}`, over); }
   else { Object.assign(S, over); render(true); }
   const a = document.createElement('a'); a.download = `${IMAGES[img].id.replace('rec:','')}-${angleName().replace(/ /g,'-')}-${head.toFixed(1)}s.png`; a.href = withOverlays(head, shNow).toDataURL('image/png'); a.click();
   cur = keep; ensureTicking(); toast('snapshot saved');
@@ -2627,10 +2679,11 @@ let startTab = 'shot'; try { startTab = localStorage.cs_tab || 'shot'; } catch {
 if (!document.querySelector(`section.tab[data-tab="${startTab}"]`)) startTab = 'shot';
 openTab(startTab);
 paintFilters(); paintBg();
-const loadMedia = Promise.all([
-  fetch('stills').then(r => r.json()).catch(() => []).then(list => { for (const n of list) if (!IMAGES.some(m => m.id === n)) IMAGES.push({ id:n, u:.5, v:.5, zoom:1 }); }),
-  fetch('recordings').then(r => r.json()).catch(() => []).then(list => { for (const r of list) IMAGES.push({ id:'rec:'+r.id, rec:r, u:.5, v:.5, zoom:1 }); }),
-]);
+// media: the server lists what's on disk; with no server (the web version) media.json lists what ships with the site
+const loadMedia = Promise.all([fetch('stills').then(r => r.json()), fetch('recordings').then(r => r.json())])
+  .catch(() => { SERVER = false; document.body.classList.add('static'); return fetch('media.json').then(r => r.json()).then(m => [m.stills, m.recordings]).catch(() => [[], []]); })
+  .then(([stills, recs]) => { for (const n of stills) if (!IMAGES.some(m => m.id === n)) IMAGES.push({ id:n, u:.5, v:.5, zoom:1 });
+    for (const r of recs) IMAGES.push({ id:'rec:'+r.id, rec:r, u:.5, v:.5, zoom:1 }); });
 window.ready = Promise.all([loadFB(), loadMedia]).then(() => {
   img = Math.max(0, IMAGES.findIndex(m => m.id === (q.get('img') || 'rec:loupe-take'))); paintStrip(); compose(); for (const [k,v] of q) if (k in P) S[k] = +v;
   $('#srcname').textContent = '· ' + IMAGES[img].id.replace('rec:', '');

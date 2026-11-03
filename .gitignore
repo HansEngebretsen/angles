@@ -1,6 +1,12 @@
 node_modules/
 out/
-rec/
+rec/*
+!rec/loupe-take/
+rec/loupe-take/*
+!rec/loupe-take/proxy.mp4
+!rec/loupe-take/meta.json
+!rec/loupe-take/thumb.jpg
+!rec/loupe-take/activity-v2.json
 .DS_Store
 __pycache__/
 angles-out/

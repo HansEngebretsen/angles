@@ -1,6 +1,6 @@
 # `angles`
 
-A small studio that turns a screen recording into a calm, photographic product shot, up close and at a real angle, with a slow camera move, a real screen look and soft focus. It runs locally, and Claude can drive it too.
+A small studio that turns a screen recording into a calm, photographic product shot, up close and at a real angle, with a slow camera move, a real screen look and soft focus. It runs in your browser, and Claude can drive it on your machine.
 
 
 <div align="center">
