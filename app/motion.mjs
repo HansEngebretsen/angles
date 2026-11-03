@@ -29,6 +29,6 @@ for (let i = 0; i < N; i++) {
 }
 await b.close();
 console.log('encoding');
-execSync(`ffmpeg -y -loglevel error -framerate ${FPS} -i ${dir}/%04d.jpg -c:v libx264 -pix_fmt yuv420p -crf 18 -movflags +faststart out/loops/${job.name}.mp4`);
+execSync(`ffmpeg -y -loglevel error -framerate ${FPS} -i ${dir}/%04d.jpg -vf 'scale=trunc(iw/2)*2:trunc(ih/2)*2' -c:v libx264 -pix_fmt yuv420p -crf 18 -movflags +faststart out/loops/${job.name}.mp4`);
 console.log(JSON.stringify({ ok: true, mp4: `out/loops/${job.name}.mp4`, seq: !!M }));
 process.exit(0);

@@ -73,7 +73,9 @@ if (cmd === 'check') {
 }
 
 // make: the studio's Export, then a 4-frame sheet cut from the finished mp4
-const width = flags.includes('--preview') ? 960 : base.width || 1920;
+// 1920 on the long side's usual width: a tall frame (9:16) renders 1080 wide, not 1920 x 3413
+const [aw, ah] = String(base.aspect || '16:9').split(':').map(Number), tall = ah > aw;
+const width = flags.includes('--preview') ? (tall ? 540 : 960) : base.width || (tall ? 1080 : 1920);
 const { applied, job } = await studio(id, base, async p => ({ applied: await p.evaluate(s => window.angles.apply(s), base), job: await p.evaluate((n, w) => window.angles.job(n, w), name, width) }));
 if (!applied.ok && !flags.includes('--anyway')) say({ ok: false, warnings: applied.warnings, hint: 'node angles.mjs schema lists the choices; or pass --anyway' });
 await fetch(`${BASE}/export`, { method: 'POST', body: JSON.stringify(job) });
