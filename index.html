@@ -115,18 +115,30 @@
   #crop .bar { display:flex; gap:10px; align-items:center; color:var(--mute); font-size:12px; }
   #crop .bar .dims { font-variant-numeric:tabular-nums; min-width:90px; text-align:center; }
   /* trim handles on the clip */
-  #clipbar .grip { position:absolute; top:0; bottom:0; width:12px; cursor:ew-resize; z-index:1; display:grid; place-items:center; }
+  #clipbar .grip { position:absolute; top:0; bottom:0; width:16px; cursor:ew-resize; z-index:1; display:grid; place-items:center; }
   #clipbar .grip::after { content:''; width:3px; height:18px; border-radius:2px; background:var(--amberink); opacity:.55; }
-  #clipbar .grip:hover::after { opacity:1; }
+  #clipbar .grip::after { transition:opacity .12s, height .12s; }
+  #clipbar .cseg:hover .grip::after { opacity:.8; }
+  #clipbar .grip:hover::after, #clipbar .grip.on::after { opacity:1; height:26px; }
   #clipbar .cut { position:absolute; top:0; bottom:0; background:color-mix(in srgb, var(--sunk) 82%, transparent); pointer-events:none; }
   #clipbar.segs { background:none; }
-  #clipbar .cseg { position:absolute; top:0; bottom:0; background:var(--amber); border-radius:9px; display:grid; place-items:center; overflow:hidden; cursor:grab; box-shadow:inset 0 0 0 1px #00000026; }
+  #clipbar .cseg { position:absolute; top:0; bottom:0; background:var(--amber); border-radius:9px; display:grid; place-items:center; overflow:hidden; cursor:grab; box-shadow:inset 0 0 0 1px #00000026; contain:layout paint; transform-origin:left center; transition:transform .16s cubic-bezier(.2,.8,.2,1); }
   #clipbar .cseg + .cseg { }
   #clipbar .cseg.other { background:var(--amber2); }
   #clipbar .cseg.sel { box-shadow:inset 0 0 0 2px var(--hi); }
-  #clipbar .cseg.drag { opacity:.6; }
+  #clipbar .cseg.drag { transition:none; z-index:3; cursor:grabbing; box-shadow:inset 0 0 0 2px var(--hi), 0 6px 18px #00000059; }
+  #clipbar.trimming .cseg { transition:none; }
+  body.trimming, body.trimming * { cursor:ew-resize !important; }
+  body.movingclip, body.movingclip * { cursor:grabbing !important; }
   #clipbar .cseg span { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:calc(100% - 28px); font-size:11.5px; }
-  #clipbar .ins { position:absolute; top:-3px; bottom:-3px; width:3px; margin-left:-1.5px; background:var(--hi); border-radius:2px; pointer-events:none; }
+  #dropins { display:none; position:absolute; top:-3px; bottom:-3px; width:3px; margin-left:-1.5px; background:var(--accent); border-radius:2px; pointer-events:none; z-index:21; }
+  #cliplane.over #dropins { display:block; }
+  /* the open room past the clip's end: click to add another recording */
+  #addclip { position:absolute; top:0; bottom:0; right:0; margin-left:4px; border-radius:9px; display:flex; align-items:center; justify-content:center; gap:6px; overflow:hidden; white-space:nowrap; color:var(--dim); font-size:12px; font-weight:500; cursor:pointer; transition:color .12s, background .12s; box-shadow:inset 0 0 0 1px transparent; }
+  #addclip b { font-size:16px; font-weight:400; line-height:1; }
+  #addclip span { opacity:0; max-width:0; transition:opacity .12s; }
+  #addclip:hover, #addclip.busy { color:var(--ink); background:color-mix(in srgb, var(--edge) 45%, transparent); }
+  #addclip:hover span, #addclip.busy span { opacity:1; max-width:none; }
   #cliplane.over { outline:2px dashed var(--accent); outline-offset:2px; }
   #ovl { position:absolute; pointer-events:none; border-radius:4px; }
   .capture { margin:10px 0 0; min-height:54px; border:1.5px dashed var(--edge); border-radius:10px; display:flex; align-items:center; justify-content:center; gap:6px; color:var(--mute); cursor:pointer; outline:none; font-size:12px; padding:8px; flex-wrap:wrap; }
@@ -367,7 +379,7 @@
   #pop .ic:hover { color:var(--ink); background:var(--raise); }
 
   #toast { position:fixed; left:50%; bottom:200px; transform:translateX(-50%); background:var(--raise); color:var(--hi); padding:7px 13px; border-radius:8px; opacity:0; transition:opacity .2s; pointer-events:none; z-index:10; }
-  body.dropping::after { content:'Drop a screenshot or a screen recording'; position:fixed; inset:14px; border:2px dashed var(--accent); border-radius:16px; display:grid; place-items:center; background:color-mix(in srgb, var(--bg) 85%, transparent); font-size:16px; z-index:20; }
+  body.dropping::after { content:attr(data-drop); position:fixed; inset:14px; border:2px dashed var(--accent); border-radius:16px; display:grid; place-items:center; background:color-mix(in srgb, var(--bg) 45%, transparent); font-size:16px; z-index:20; pointer-events:none; }  /* never the drop target, or nothing under it could take the file */
   /* responsive: the panel narrows, then everything stacks into one scrolling column; the canvas always fits */
   header { min-width:0; } #aspects { flex:none; }
   @media (max-width:1200px) {
@@ -463,6 +475,7 @@
         <h3>Media <span class="sub">↑ ↓</span></h3>
         <div id="drop"><svg class="i" viewBox="0 0 24 24"><path d="M12 16V4M7 9l5-5 5 5M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/></svg>Drop a screenshot or screen recording, or click to choose</div>
         <input type=file id="file" accept="video/*,image/*" hidden>
+        <input type=file id="addfile" accept="video/*" multiple hidden>
         <div id="cstatus" class="note" style="margin:-4px 0 10px"></div>
         <div id="imgs"></div>
       </section>
@@ -559,7 +572,7 @@
   <div id="tlgrip" title="drag to resize the timeline"></div>
   <div id="lanes">
     <div id="ruler"></div>
-    <div class="lane" id="cliplane"><div id="clipbar"></div></div>
+    <div class="lane" id="cliplane"><div id="clipbar"></div><i id="dropins"></i></div>
     <div class="lane" id="camlane"></div>
     <div class="lane layer" id="poslane"></div>
     <div class="lane layer" id="foclane"></div>
@@ -831,7 +844,7 @@ function setupShot(){
   const sh = shot();
   $('#follow').checked = sh.follow !== false; document.querySelectorAll('.recOnlyAny').forEach(e => e.style.display = cur?.rec ? '' : 'none');
   if (!sh.init) { if (cur?.rec?.id === 'loupe-take') starterClip(); else { sh.init = true; applyStyle(cur?.rec ? 'float' : 'angle', 'whisper', true); } }
-  paintClip(); paintTimeline(); paintMoves(); paintStyles(); ensureTicking(); scheduleThumbs(); loadTrack();
+  paintClip(); paintTimeline(); paintMoves(); paintStyles(); ensureTicking(); scheduleThumbs(); loadTrack(); flushReflow();
   undoBase = snapState();
 }
 
@@ -957,13 +970,20 @@ function paintStrip(){
   $('#imgs').innerHTML = IMAGES.map((m,i) => `<div class="src ${m.rec?'rec':''} ${i===img?'on':''}" data-i="${i}" ${m.rec ? 'draggable="true" title="drag onto the clip lane to add it to this shot"' : ''}><div class="th"><img src="${m.rec ? m.rec.thumb || `rec/${m.rec.id}/thumb.jpg` : m.url || `src/${m.id}.png`}" alt=""></div><div class="nm">${m.id.replace('rec:','')}${m.rec ? ` · ${(m.rec.frames/m.rec.fps).toFixed(1)}s` : ''}</div></div>`).join('');
 }
 $('#imgs').ondragstart = e => { const s = e.target.closest('.src'), m = s && IMAGES[+s.dataset.i]; if (!m?.rec) return e.preventDefault(); e.dataTransfer.setData('text/x-rec', m.rec.id); e.dataTransfer.effectAllowed = 'copy'; };
-function insertRec(id, t){ const rm = recMeta(id); if (!rm || !cur?.rec) return; editSegs(ss => { const i = gapAt(t); ss.splice(i, 0, { rec: id, in: 0, out: +(rm.frames/rm.fps).toFixed(3) }); selSeg = i; }); toast(`added ${id}`); }
-$('#cliplane').ondragover = e => { if (!cur?.rec) return; e.preventDefault(); e.stopPropagation(); $('#cliplane').classList.add('over'); };
+// t: the shot time to insert nearest; none adds it after the last clip
+function insertRec(id, t){ const rm = recMeta(id); if (!rm || !cur?.rec) return; editSegs(ss => { const i = t == null ? ss.length : gapAt(t); ss.splice(i, 0, { rec: id, in: 0, out: +(rm.frames/rm.fps).toFixed(3) }); selSeg = i; }); toast(`added ${id}`); }
+const isVideo = f => /^video\//.test(f.type);
+// splice recordings into this shot, in order, each after the one before
+async function spliceFiles(files, t){ let at = t;
+  for (const f of files) { addBusy = f.name.replace(/\.[^.]+$/, ''); paintBar(); const r = await uploadRec(f); addBusy = null; paintBar(); if (!r) continue; paintStrip(); insertRec(r.id, at); if (at != null) at = segStart(selSeg + 1); } }
+$('#addfile').onchange = e => { const fs = [...e.target.files].filter(isVideo); e.target.value = ''; spliceFiles(fs); };
+$('#clipbar').addEventListener('click', e => { if (e.target.closest('#addclip') && !addBusy) $('#addfile').click(); });
+$('#cliplane').ondragover = e => { if (!cur?.rec) return; e.preventDefault(); e.stopPropagation(); markDrop(e); $('#cliplane').classList.add('over'); $('#dropins').style.left = xOf(segStart(gapAt(tAt(e)))) + 'px'; };
 $('#cliplane').ondragleave = () => $('#cliplane').classList.remove('over');
 $('#cliplane').ondrop = async e => { if (!cur?.rec) return; e.preventDefault(); e.stopPropagation(); $('#cliplane').classList.remove('over'); document.body.classList.remove('dropping');
-  const t = tAt(e), id = e.dataTransfer.getData('text/x-rec'), f = e.dataTransfer.files[0];
+  const t = tAt(e), id = e.dataTransfer.getData('text/x-rec'), fs = [...e.dataTransfer.files];
   if (id) return insertRec(id, t);
-  if (f && /^video\//.test(f.type)) { const keep = img; const r = await uploadRec(f); if (r) { img = keep; paintStrip(); insertRec(r.id, t); } } };
+  if (fs.some(isVideo)) spliceFiles(fs.filter(isVideo), t); else takeFile(fs[0]); };
 $('#imgs').onclick = e => { const s = e.target.closest('.src'); if (s) { img = +s.dataset.i; paintStrip(); show(); } };
 $('#drop').onclick = () => $('#file').click();
 
@@ -1123,7 +1143,7 @@ function restoreState(json){
   head = Math.min(head, shotT()); applyHead(); syncSliders(); paintFilters(); paintStyles(); paintMoves(); paintTimeline(); paintClip(); ensureTicking(); scheduleThumbs();
 }
 function undo(redo = false){
-  if (!cur) return; const id = IMAGES[img].id, now = snapState();
+  if (!cur) return; flushReflow(); const id = IMAGES[img].id, now = snapState();
   if (undoBase && now !== undoBase && !redo) { (UNDO[id] ||= []).push(undoBase); REDO[id] = []; }
   const from = redo ? REDO : UNDO, to = redo ? UNDO : REDO;
   if (!from[id]?.length) { undoBase = now; return toast(redo ? 'nothing to redo' : 'nothing to undo'); }
@@ -1863,7 +1883,7 @@ function calmShot(sh, budget, refill){
   const set = k => { sh.keys.forEach((key, i) => { const c = { ...orig[i] };
       for (const f of F) c[f] = f === 'zoom' ? Math.exp(mid.zoom + (Math.log(orig[i].zoom) - mid.zoom)*k) : mid[f] + (orig[i][f] - mid[f])*k;
       key.cam = refill ? fillCam(c) : c; }); sh.sway = sway0*Math.min(1, .3 + .7*k); };
-  const speed = () => motionStats(shotFor({ keys: sh.keys, sway: sh.sway, follow: 0, ...(sh.fill != null ? { fill: sh.fill } : {}) })).p95;
+  const speed = () => { const s2 = shotFor({ keys: sh.keys, sway: sh.sway, follow: 0, ...(sh.fill != null ? { fill: sh.fill } : {}) }); return motionStats(s2, Math.max(6, Math.min(15, 90/s2.T))).p95; }; // these moves are smooth: a long shot doesn't need 15 samples a second
   const travel = sh.travel ?? shot().travel ?? .8;
   set(1); if (speed() <= budget) { set(travel); return sh.calm = 1; }
   let lo = 0, hi = 1; for (let i = 0; i < 6; i++) { const m = (lo + hi)/2; set(m); if (speed() <= budget) lo = m; else hi = m; }
@@ -2014,8 +2034,12 @@ function choosePreset(i){
 
 // --- timeline drawing + interaction
 const W_ = () => $('#lanes').clientWidth;
-const xOf = t => t / shotT() * W_();
-const tAt = e => { const r = $('#lanes').getBoundingClientRect(); return Math.min(Math.max((e.clientX - r.left) / r.width, 0), 1) * shotT(); };
+// the timeline's scale: a recording gets open room past its end (click there to add a clip), and the scale holds still
+// while you hold a clip, so what you grabbed stays under the pointer; it settles when you let go
+let viewHeld = 0;
+const viewT = () => { if (viewHeld) return viewHeld; const T = shotT(); return trim() ? T + Math.max(1, T*.12) : T; };
+const xOf = t => t / viewT() * W_();
+const tAt = e => { const r = $('#lanes').getBoundingClientRect(); return Math.min(Math.min(Math.max((e.clientX - r.left) / r.width, 0), 1) * viewT(), shotT()); };
 // where a point of the frame (fx, fy from the top left) lands on the screen, in screen uv (null if it misses)
 function uvAtFrame(c, A, asp, fx, fy){
   const r = [c.rotX, c.rotY, c.rotZ].map(x => x*Math.PI/180), [cx, sx, cy, sy, cz, sz] = r.flatMap(a => [Math.cos(a), Math.sin(a)]);
@@ -2027,7 +2051,7 @@ function uvAtFrame(c, A, asp, fx, fy){
   return [dot(p, ex)/A + .5, .5 - dot(p, ey)];
 }
 function paintHead(){
-  const T = shotT(); paintSpanUI(); if ($('.tab[data-tab=point]')?.classList.contains('on')) paintFocusPanel(); $('#headline').style.left = xOf(Math.min(head, T)) + 'px';
+  const T = shotT(); paintSpanUI(); if ($('.tab[data-tab=point]')?.classList.contains('on')) paintFocusPanel(); if (!trimDrag) $('#headline').style.left = xOf(Math.min(head, T)) + 'px';
   $('#tnow').textContent = fmt(Math.min(head, T)); $('#tall').textContent = fmt(T);
 }
 // --- Focus & Position: the values at the current frame, as fields you drag (shift coarser, alt finer) or click and
@@ -2203,13 +2227,11 @@ bindScrub($('#ovnums'), OVF, setOvValue, null, null, paintOverlayPanel);
 function paintTimeline(keepEase){
   const sh = shot(), T = shotT(), rec = !!trim(), W = W_();
   const step = T > 20 ? 2 : T < 5 ? .5 : 1; let r = '';
-  for (let t = step; t < T - step*.3; t += step) r += `<span class="tk" style="left:${xOf(t)}px">${t % 1 ? t.toFixed(1) : fmt(t).replace(/\.00$/,'')}</span>`;
+  for (let t = step, V = viewT(); t < V - step*.3; t += step) r += `<span class="tk" style="left:${xOf(t)}px">${t % 1 ? t.toFixed(1) : fmt(t).replace(/\.00$/,'')}</span>`;
   $('#ruler').innerHTML = r;
   // the clip, with its holds hatched at either end
   const hb = rec && !sh.loop ? sh.hb : 0, ha = rec && !sh.loop ? sh.ha : 0;
-  $('#clipbar').innerHTML = (hb ? `<div class="hold" style="left:0;width:${xOf(hb)}px" title="first frame held ${hb}s"></div>` : '') + (ha ? `<div class="hold after" style="right:0;width:${xOf(ha)}px" title="last frame held ${ha}s"></div>` : '') +
-    (rec ? paintSegs(hb) : `<span>Still ${T.toFixed(1)}s${sh.loop ? ' · loops' : ''}</span>`);
-  $('#clipbar').classList.toggle('segs', rec);
+  paintClipBar(hb, ha, rec);
   // the camera lane: glides drawn as bars between keys
   const ks = sh.keys;
   let h = ks.length ? '' : `<div class="empty">Pick a motion, or double-click to add a camera key</div>`;
@@ -2249,24 +2271,51 @@ function paintTimeline(keepEase){
   $('#playicon').innerHTML = playing ? '<path d="M8 5v14M16 5v14"/>' : '<path d="M9 6l10 6-10 6z"/>';
   paintHead(); if (cur) paintClip(); paintFocusPanel();
 }
+// the clip lane. Rebuilt only when it changes, so a settling clip keeps animating and a grip keeps its hover
+function paintClipBar(hb, ha, rec){
+  const T = shotT(), sh = shot(), bar = $('#clipbar');
+  const h = (hb ? `<div class="hold" style="left:0;width:${xOf(hb)}px" title="first frame held ${hb}s"></div>` : '') + (ha ? `<div class="hold after" style="left:${xOf(T - ha)}px;width:${xOf(ha)}px" title="last frame held ${ha}s"></div>` : '') +
+    (rec ? paintSegs(hb) + `<div id="addclip" class="${addBusy ? 'busy' : ''}" style="left:${xOf(T)}px" title="Add another recording after this one"><b>+</b><span>${addBusy ? `Adding ${addBusy}…` : 'Add video'}</span></div>` : `<span>Still ${T.toFixed(1)}s${sh.loop ? ' · loops' : ''}</span>`);
+  if (paintClipBar.h !== h) { paintClipBar.h = h; bar.innerHTML = h; }
+  bar.classList.toggle('segs', rec);
+}
+const paintBar = () => { const sh = shot(), rec = !!trim(); paintClipBar(rec && !sh.loop ? sh.hb : 0, rec && !sh.loop ? sh.ha : 0, rec); };
 // segments as blocks across the clip (scaled into the loop's length when looping), each with trim grips
-let selSeg = -1, segDrag = null;
+let selSeg = -1, segDrag = null, addBusy = null;
 function paintSegs(hb){
   const ss = segs(), sh = shot(), tot = segTotal(), body = bodySecs(), k = body/tot; let t = hb, h = '';
   ss.forEach((sg, i) => { const L = segLen(sg)*k, x0 = xOf(t), x1 = xOf(t + L), nm = sg.rec === cur.rec.id ? '' : sg.rec + ' · ';
-    h += `<div class="cseg ${sg.rec === cur.rec.id ? '' : 'other'} ${i === selSeg ? 'sel' : ''} ${segDrag?.i === i && segDrag.moved ? 'drag' : ''}" data-i="${i}" style="left:${x0 + (i ? 1 : 0)}px;width:${Math.max(4, x1 - x0 - (i ? 1 : 0))}px" title="${sg.rec} ${sg.in.toFixed(2)}–${sg.out.toFixed(2)}s · drag to move, edges to trim, B splits, ⌫ deletes, ⌘C/⌘V">
+    h += `<div class="cseg ${sg.rec === cur.rec.id ? '' : 'other'} ${i === selSeg ? 'sel' : ''} " data-i="${i}" style="left:${x0 + (i ? 1 : 0)}px;width:${Math.max(4, x1 - x0 - (i ? 1 : 0))}px" title="${sg.rec} ${sg.in.toFixed(2)}–${sg.out.toFixed(2)}s · drag to move, edges to trim, B splits, ⌫ deletes, ⌘C/⌘V, ⌥-drag copies">
       <div class="grip" data-g="in" data-i="${i}" style="left:0"></div><span>${ss.length > 1 ? nm + segLen(sg).toFixed(1) + 's' : `Clip ${body.toFixed(1)}s${sh.hb || sh.ha ? (sh.loop ? '' : ` · held ${sh.hb}s / ${sh.ha}s`) : ''}${sh.loop ? ' · loops' : ''}`}</span><div class="grip" data-g="out" data-i="${i}" style="right:0"></div></div>`;
     t += L; });
-  if (segDrag?.moved && segDrag.to != null) h += `<div class="ins" style="left:${xOf(segStart(segDrag.to)*1)}px"></div>`;
   return h;
 }
 // which gap between segments a shot time falls nearest (for dropping and moving segments)
 function gapAt(t){ const ss = segs(); let best = 0, bd = 1e9; for (let i = 0; i <= ss.length; i++) { const d = Math.abs(segStart(i) - t); if (d < bd) { bd = d; best = i; } } return best; }
-function editSegs(fn){ pause(); fn(segs()); sel = -1; reflow(); paintTimeline(); paintClip(); ensureTicking(); scheduleThumbs(); }
+// where each clip is on screen right now, for the slide into its new place
+function segRects(){ const ss = segs(), m = new Map(); if (!ss) return m; const x0 = $('#clipbar').getBoundingClientRect().left;
+  document.querySelectorAll('#clipbar .cseg:not(.ghost)').forEach(el => { const sg = ss[+el.dataset.i], r = el.getBoundingClientRect(); if (sg) m.set(sg, { x: r.left - x0, w: r.width }); }); return m; }
+const calm = matchMedia('(prefers-reduced-motion: reduce)');
+// clips glide to where they now belong: transforms only, so it holds 60fps even while the camera recalculates
+function settleSegs(from, headFrom){
+  const ss = segs(), x0 = $('#clipbar').getBoundingClientRect().left, opt = { duration: 190, easing: 'cubic-bezier(.2,.8,.2,1)' }; if (calm.matches) return;
+  document.querySelectorAll('#clipbar .cseg').forEach(el => { const a = from.get(ss[+el.dataset.i]), r = el.getBoundingClientRect(); if (!r.width) return;
+    if (!a) return el.animate([{ transform: 'scaleX(.3)', opacity: 0 }, { transform: 'none', opacity: 1 }], opt);
+    const dx = a.x - (r.left - x0), sx = a.w / r.width; if (Math.abs(dx) > .5 || Math.abs(sx - 1) > .004) el.animate([{ transform: `translateX(${dx}px) scaleX(${sx})` }, { transform: 'none' }], opt); });
+  const hl = $('#headline'), hx = hl.getBoundingClientRect().left; if (headFrom != null && Math.abs(headFrom - hx) > .5) hl.animate([{ transform: `translateX(${headFrom - hx}px)` }, { transform: 'none' }], opt);
+}
+// the shot's length changed: restyling the camera can take a few hundred ms, so it waits for the clips to land
+let reflowT = 0; const flowDue = new Set();
+function reflowSoon(){ clearTimeout(reflowT); flowDue.add(IMAGES[img].id); reflowT = setTimeout(flushReflow, 210); }
+function flushReflow(){ clearTimeout(reflowT); if (!flowDue.delete(IMAGES[img]?.id)) return; reflow(); paintTimeline(); ensureTicking(); scheduleThumbs(); laterUndo(); }
+function editSegs(fn, from = segRects()){ const hx = $('#headline').getBoundingClientRect().left; pause(); fn(segs()); sel = -1; head = Math.min(head, shotT());
+  paintTimeline(); settleSegs(from, hx); reflowSoon(); ensureTicking(); laterUndo(); }
 function splitAt(t){
   const at = videoAt(t), sg = segs()[at.i];
   if (at.time - sg.in < .1 || sg.out - at.time < .1) return toast('too close to an edge to split');
-  editSegs(ss => { const b = { ...sg, in: +at.time.toFixed(3) }; sg.out = +at.time.toFixed(3); ss.splice(at.i + 1, 0, b); selSeg = at.i + 1; });
+  const b = { ...sg, in: +at.time.toFixed(3) }, from = segRects(), a = from.get(sg), f = a ? (at.time - sg.in)/segLen(sg) : 0; delete b.xfade;
+  if (a) { from.set(b, { x: a.x + a.w*f, w: a.w*(1 - f) }); from.set(sg, { x: a.x, w: a.w*f }); }   // the two halves start where the clip was
+  editSegs(ss => { sg.out = +at.time.toFixed(3); ss.splice(at.i + 1, 0, b); selSeg = at.i + 1; }, from);
   toast('split');
 }
 function deleteSeg(i){ if (segs().length < 2) return toast('the only clip: trim it instead'); editSegs(ss => { ss.splice(i, 1); selSeg = Math.min(i, ss.length - 1); }); }
@@ -2275,8 +2324,8 @@ function pasteSeg(at){ if (!segClip) return toast('nothing copied'); editSegs(ss
 $('#splitbtn').onclick = () => cur?.rec ? splitAt(head) : toast('splitting is for recordings');
 let keyDrag = null;
 $('#lanes').onpointerdown = e => {
-  if (e.target.closest('#pop') || e.target.closest('#applypop')) return;
-  pause(); $('#lanes').setPointerCapture(e.pointerId);
+  if (e.target.closest('#pop') || e.target.closest('#applypop') || e.target.closest('#addclip')) return;
+  pause(); $('#lanes').setPointerCapture(e.pointerId); clearTimeout(reflowT);   // grabbing again right away: the camera waits till you let go
   const mk = e.target.closest('.mk'), sh = shot(), grip = e.target.closest('.grip');
   const ob = e.target.closest('.ovbar');
   if (ob) { selO = +ob.dataset.o; selK = null; sel = -1; const o = ovList()[selO]; oDrag = { o, x: e.clientX, t0: o.t, d0: o.dur, edge: !!e.target.dataset.edge, moved: false, perPx: shotT()/W_() };
@@ -2287,8 +2336,8 @@ $('#lanes').onpointerdown = e => {
   if (lk) { selK = { layer: lk.dataset.l, i: +lk.dataset.k }; sel = -1; kDrag = { ...selK, x: e.clientX, moved: false }; head = layerKeys(selK.layer)[selK.i].t; paintTimeline(); ensureTicking(); return; }
   selK = null;
   if (e.target.closest('#poslane, #foclane')) { scrubbing = true; head = tAt(e); paintTimeline(); ensureTicking(); return; }
-  if (grip) { const i = +(grip.dataset.i || 0), sg = segs()[i]; selSeg = i; trimDrag = { i, k: grip.dataset.g, x: e.clientX, v0: sg[grip.dataset.g], perPx: shotT() / W_() }; sel = -1; }
-  else if (cs) { selSeg = +cs.dataset.i; sel = -1; segDrag = { i: selSeg, x: e.clientX, moved: false }; head = tAt(e); scrubbing = true; }
+  if (grip) { const i = +(grip.dataset.i || 0), sg = segs()[i]; selSeg = i; viewHeld = viewT(); trimDrag = { i, k: grip.dataset.g, x: e.clientX, v0: sg[grip.dataset.g], len0: segLen(sg), moved: false, perPx: viewHeld / W_() * segTotal() / bodySecs() }; sel = -1; }
+  else if (cs) { selSeg = +cs.dataset.i; sel = -1; viewHeld = viewT(); segDrag = { i: selSeg, x: e.clientX, moved: false, copy: e.altKey }; head = tAt(e); scrubbing = true; }
   else if (mk && sh.style && !spanBounds(sh).length && (+mk.dataset.i === 0 || +mk.dataset.i === sh.keys.length - 1)) {
     const i = +mk.dataset.i; winDrag = { end: i ? 1 : 0, k: sh.keys[i], x: e.clientX }; sel = -1; head = sh.keys[i].t; }
   else if (mk) {
@@ -2301,12 +2350,40 @@ $('#lanes').onpointerdown = e => {
 let trimDrag = null;
 // drag a clip end to trim it, Screen Studio style: the frame under the grip shows while you drag
 function dragTrim(e){
-  const { i, k, v0, perPx } = trimDrag, sg = segs()[i], rm = recMeta(sg.rec) || cur.rec, d = rm.frames / rm.fps, tr = trim();
+  const { i, k, v0, perPx } = trimDrag, sg = segs()[i], bar = $('#clipbar'), rm = recMeta(sg.rec) || cur.rec, d = rm.frames / rm.fps, tr = trim();
   const v = v0 + (e.clientX - trimDrag.x)*perPx;
   if (k === 'in') sg.in = +Math.min(sg.out - .3, Math.max(0, v)).toFixed(2); else sg.out = +Math.max(sg.in + .3, Math.min(d, v)).toFixed(2);
   tr.xfade = Math.min(tr.xfade, segTotal()/2);
   head = k === 'in' ? segStart(i) : Math.max(0, segStart(i + 1) - .03);
-  reflow(); paintTimeline(); ensureTicking();
+  // only the clip you hold moves: the grip stays on the pointer, later clips slide, and the camera catches up on release
+  const pps = 1/perPx, el = bar.querySelector(`.cseg[data-i="${i}"]`);
+  if (!trimDrag.moved) { trimDrag.moved = true; fast = true; bar.classList.add('trimming'); document.body.classList.add('trimming'); el.querySelector(`.grip[data-g="${k}"]`).classList.add('on'); trimDrag.left = el.offsetLeft; trimDrag.w = el.offsetWidth; }
+  const dLen = (segLen(sg) - trimDrag.len0)*pps, cut = k === 'in' ? Math.max(0, sg.in - v0)*pps : 0, push = k === 'in' ? Math.max(0, v0 - sg.in)*pps : dLen;   // shortening from the front leaves a gap until you let go
+  el.style.left = trimDrag.left + cut + 'px'; el.style.width = Math.max(4, trimDrag.w + dLen) + 'px';
+  const later = [...bar.querySelectorAll('.cseg')].filter(c => +c.dataset.i > i); later.push(...bar.querySelectorAll('.hold.after, #addclip'));
+  for (const c of later) c.style.transform = push ? `translateX(${push}px)` : '';
+  const lb = el.querySelector('span'); if (segs().length > 1) lb.textContent = (sg.rec === cur.rec.id ? '' : sg.rec + ' · ') + segLen(sg).toFixed(1) + 's';
+  $('#headline').style.left = trimDrag.left + (k === 'in' ? cut : Math.max(4, trimDrag.w + dLen)) + 'px';
+  ensureTicking();
+}
+// let go of a clip: the scale settles, everything glides there, and the camera recalculates behind it
+function endTrim(){ const { moved } = trimDrag, from = moved ? segRects() : null, hx = $('#headline').getBoundingClientRect().left; trimDrag = null; viewHeld = 0;
+  if (!moved) return; fast = false; $('#clipbar').classList.remove('trimming'); document.body.classList.remove('trimming');
+  paintClipBar.h = null; paintBar(); paintHead(); settleSegs(from, hx); reflowSoon(); }
+// a clip you drag rides on the pointer and the others part to show where it lands. Alt-drag leaves the original and drags a copy.
+function dragSeg(e){ const bar = $('#clipbar'), els = [...bar.querySelectorAll('.cseg:not(.ghost)')], d = segDrag, src = els[d.i];
+  if (!d.moved) { d.moved = true; scrubbing = false; document.body.classList.add('movingclip');
+    d.el = d.copy ? bar.appendChild(Object.assign(src.cloneNode(true), { title: '' })) : src; d.el.classList.add('drag'); if (d.copy) d.el.classList.add('ghost'); d.w = src.offsetWidth; }
+  d.el.style.transform = `translateX(${e.clientX - d.x}px)`;
+  d.to = gapAt(tAt(e)); if (!d.copy && d.to === d.i + 1) d.to = d.i;
+  els.forEach((c, j) => { if (c === d.el) return; const by = d.copy ? (j >= d.to ? d.w : 0) : j > d.i && j < d.to ? -d.w : j < d.i && j >= d.to ? d.w : 0; c.style.transform = by ? `translateX(${by}px)` : ''; });
+}
+function endSeg(){ const { i, to, moved, copy } = segDrag; segDrag = null; viewHeld = 0; if (!moved) return; document.body.classList.remove('movingclip');
+  const from = segRects(), ghost = $('#clipbar .ghost'), g = segs()[i], x0 = $('#clipbar').getBoundingClientRect().left, gr = ghost?.getBoundingClientRect();
+  paintClipBar.h = null; ghost?.remove();
+  if (copy) { const c = { ...g }; delete c.xfade; from.set(c, { x: gr.left - x0, w: gr.width }); editSegs(ss => { ss.splice(to ?? i + 1, 0, c); selSeg = to ?? i + 1; }, from); toast('copied'); }
+  else if (to != null && to !== i) editSegs(ss => { ss.splice(i, 1); const j = to > i ? to - 1 : to; ss.splice(j, 0, g); selSeg = j; }, from);
+  else { paintBar(); settleSegs(from); }
 }
 let winDrag = null;
 $('#lanes').onpointermove = e => {
@@ -2319,7 +2396,7 @@ $('#lanes').onpointermove = e => {
   if (kDrag) { if (!kDrag.moved && Math.abs(e.clientX - kDrag.x) < 3) return; kDrag.moved = true; const k = layerKeys(kDrag.layer)[kDrag.i]; k.t = +Math.min(shotT(), Math.max(0, tAt(e))).toFixed(2); head = k.t; applyHead(); paintTimeline(); ensureTicking(); return; }
   if (trimDrag) return dragTrim(e);
   if (segDrag) { if (!segDrag.moved && Math.abs(e.clientX - segDrag.x) < 6) { head = tAt(e); paintHead(); ensureTicking(); return; }
-    segDrag.moved = true; scrubbing = false; segDrag.to = gapAt(tAt(e)); paintTimeline(); return; }
+    return dragSeg(e); }
   if (keyDrag) { if (!keyDrag.moved && Math.abs(e.clientX - keyDrag.x) < 3) return;
     keyDrag.moved = true; keyDrag.k.t = +tAt(e).toFixed(2); head = keyDrag.k.t; sel = shot().keys.indexOf(keyDrag.k); paintTimeline(); ensureTicking(); }
   else if (scrubbing) { head = tAt(e); paintHead(); ensureTicking(); }
@@ -2328,9 +2405,9 @@ $('#lanes').onpointerup = () => {
   if (winDrag) { const sh = shot(), T = shotT(); sh.win ||= [0, 1]; sh.win[winDrag.end] = +(winDrag.k.t/T).toFixed(3); winDrag = null; restyle(); }
   if (oDrag) { oDrag = null; }
   if (kDrag) { const { moved, layer } = kDrag; kDrag = null; if (moved && layer === 'cam' && shot().style && spanBounds(shot()).length) restyle(); }
-  if (trimDrag) { trimDrag = null; scheduleThumbs(); }
-  if (segDrag) { const { i, to, moved } = segDrag; segDrag = null;
-    if (moved && to != null && to !== i && to !== i + 1) editSegs(ss => { const [g] = ss.splice(i, 1); const j = to > i ? to - 1 : to; ss.splice(j, 0, g); selSeg = j; }); }
+  if (trimDrag) endTrim();
+  if (segDrag) endSeg();
+  if (flowDue.size) reflowSoon();
   if (keyDrag) { const sh = shot(); if (keyDrag.moved) { sh.auto = null; sh.style = null; paintStyles(); } sh.keys.sort((a,b) => a.t-b.t); sel = sh.keys.indexOf(keyDrag.k); keyDrag = null; paintMoves(); }
   if (scrubbing) scheduleThumbs();
   scrubbing = false; paintTimeline(); ensureTicking();
@@ -2467,7 +2544,7 @@ function paintClip(){
     const v = CLIPK[k][1] === 'trim' ? (k === 'xfade' ? tr : segs()[0])[k] : sh[k]; if (document.activeElement !== i) i.value = (+v).toFixed(2) + 's';
   }
   document.querySelectorAll('.recOnly').forEach(e => e.style.display = rec && sh.loop ? '' : 'none');
-  $('#clipinfo').textContent = !rec ? 'A still: the camera moves over it for this long.' : many ? `${segs().length} clips, ${segTotal().toFixed(1)}s. On the timeline: drag a clip to move it, its edges to trim, B splits at the playhead, ⌫ deletes, ⌘C / ⌘V copy and paste, ⌘D duplicates. Drag a recording from Media onto the clip lane to add it.` : sh.loop ? `Loops every ${clipSecs().toFixed(2)}s. Holds are off while looping; the crossfade shows in the export.`
+  $('#clipinfo').textContent = !rec ? 'A still: the camera moves over it for this long.' : many ? `${segs().length} clips, ${segTotal().toFixed(1)}s. On the timeline: drag a clip to move it, its edges to trim, B splits at the playhead, ⌫ deletes, ⌘C / ⌘V copy and paste, ⌘D duplicates. ⌥-drag copies. Click the + after the last clip, or drop a recording on the canvas or timeline, to add another.` : sh.loop ? `Loops every ${clipSecs().toFixed(2)}s. Holds are off while looping; the crossfade shows in the export.`
     : `Shot ${shotT().toFixed(1)}s: first frame held ${sh.hb}s, clip ${bodySecs().toFixed(1)}s, last frame held ${sh.ha}s. The camera keeps moving through the holds.`;
 }
 // a moving cursor or lens ghosts in a long crossfade, so look for an end that already matches the start
@@ -2513,15 +2590,25 @@ async function uploadRec(f){
 }
 const takeFile = f => f && /^(video|image)\//.test(f.type) && addMedia(f, f.name.replace(/\.[^.]+$/, ''), f.name.split('.').pop().toLowerCase());
 $('#file').onchange = e => takeFile(e.target.files[0]);
-addEventListener('dragover', e => { e.preventDefault(); document.body.classList.add('dropping'); });
+// dropping on the canvas or timeline adds a recording to this clip; the Media panel keeps it as a shot of its own.
+// A first-time visitor's recording replaces the sample clip instead of landing after it.
+const splicing = t => cur?.rec && !t.closest?.('aside') && !(!SERVER && IMAGES[img]?.id === 'rec:loupe-take' && segs().length === 1);
+function markDrop(e){ const dt = e.dataTransfer, rec = dt.types.includes('text/x-rec'), vid = [...dt.items].some(i => i.type.startsWith('video/'));
+  document.body.dataset.drop = (rec || vid) && splicing(e.target) ? 'Drop to add it to this clip' : rec ? 'Drop on the canvas or timeline to add it to this clip' : e.target.closest?.('aside') ? 'Drop to add it to Media' : 'Drop a screenshot or a screen recording';
+  document.body.classList.add('dropping'); }
+addEventListener('dragover', e => { e.preventDefault(); markDrop(e); });
 addEventListener('dragleave', e => { if (!e.relatedTarget) document.body.classList.remove('dropping'); });
-addEventListener('drop', e => { e.preventDefault(); document.body.classList.remove('dropping'); takeFile(e.dataTransfer.files[0]); });
+addEventListener('drop', e => { e.preventDefault(); document.body.classList.remove('dropping');
+  const id = e.dataTransfer.getData('text/x-rec'), fs = [...e.dataTransfer.files];
+  if (id) { if (splicing(e.target)) insertRec(id); return; }
+  if (fs.some(isVideo) && splicing(e.target)) return spliceFiles(fs.filter(isVideo));
+  takeFile(fs[0]); });
 
 // --- export the shot; snapshot the frame on screen at full resolution (a recording's own full-size frame, not the preview)
 // exports render in the background on the server; the top bar shows frames done, time left, then a link
 let exporting = null;
 function makeJob(name){
-  const sh = shotFor(); name ||= `${IMAGES[img].id.replace('rec:','')}-${(MOVES[sh.auto]?.[0] || angleName()).replace(/ /g,'-')}-${Date.now().toString(36).slice(-4)}`;
+  flushReflow(); const sh = shotFor(); name ||= `${IMAGES[img].id.replace('rec:','')}-${(MOVES[sh.auto]?.[0] || angleName()).replace(/ /g,'-')}-${Date.now().toString(36).slice(-4)}`;
   const job = { name, img: IMAGES[img].id, aspect: aspectName(), settings: { ...S, ...free }, shot: sh };
   if (cur?.rec) { const t = trim(), fps = cur.rec.fps; Object.assign(job, { img:'loupe', rec: cur.rec.id, in: Math.round(t.in*fps), out: Math.round(t.out*fps), xfade: sh.loop ? Math.round(t.xfade*fps) : 0,
     segs: segs().map(sg => { const f = recMeta(sg.rec)?.fps || fps; return { rec: sg.rec, in: Math.round(sg.in*f), out: Math.round(sg.out*f) }; }) }); }
